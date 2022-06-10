@@ -21,6 +21,18 @@ interface IFundDistribution {
     uint256 amount
   ) external returns (bool);
 
+  function claimEth() external payable returns (bool);
+
+  function claimToken(address token) external returns (bool);
+
+  function claimAllTokens() external returns (bool);
+
+  function sendEthTo(address to) external payable returns (bool);
+
+  function sendTokenTo(address to, address token) external returns (bool);
+
+  function sendAllTokensTo(address to) external returns (bool);
+
   function claimFund() external payable returns (bool);
 
   function sendFundTo(address to) external payable returns (bool);

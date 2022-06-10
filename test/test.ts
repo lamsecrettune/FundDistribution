@@ -4,7 +4,6 @@ import {ethers, waffle} from 'hardhat';
 import {deploy, evm_revert, evm_snapshot} from './helpers/hardhat-helpers';
 import {FundDistribution, ERC20} from '../typechain';
 import {constants} from 'ethers';
-import {address} from '../node_modules/hardhat/src/internal/core/config/config-validation';
 
 describe('FundDistribution', () => {
   const [admin] = waffle.provider.getWallets();
@@ -53,7 +52,7 @@ describe('FundDistribution', () => {
       expect(balanceB).to.equal(60);
     });
     it('addToken revert with address 0x0', async () => {
-      await expect(FundDistribution.addToken(constants.AddressZero)).to.be.revertedWith('Invalid token');
+      await expect(FundDistribution.addToken(constants.AddressZero)).to.be.revertedWith('Invalid address');
     });
     it('addToken revert if amount is zero', async () => {
       await expect(FundDistribution.addToken(TokenA.address)).to.be.revertedWith('Amount is zero');
@@ -116,7 +115,7 @@ describe('FundDistribution', () => {
         value: ethers.utils.parseEther('1'),
       });
     });
-    it('should claim ether', async () => {
+    it('should claim fund', async () => {
       const beforeEthBalance = await addr2.getBalance();
       const beforeTokenABalance = await TokenA.balanceOf(addr2.address);
       const beforeTokenBBalance = await TokenB.balanceOf(addr2.address);
@@ -130,6 +129,49 @@ describe('FundDistribution', () => {
       expect(afterEthBalance).to.equal(beforeEthBalance.add(50));
       expect(afterTokenABalance).to.equal(beforeTokenABalance.add(20));
       expect(afterTokenBBalance).to.equal(beforeTokenBBalance.add(30));
+    });
+    it('claim fund with allowance exceed balance', async () => {
+      const beforeEthBalance = await addr2.getBalance();
+      const beforeTokenABalance = await TokenA.balanceOf(addr2.address);
+      const beforeTokenBBalance = await TokenB.balanceOf(addr2.address);
+      await FundDistribution.setEthAllowance(addr2.address, ethers.utils.parseEther('2'));
+      await FundDistribution.setTokenAllowance(addr2.address, TokenA.address, 100);
+      await FundDistribution.setTokenAllowance(addr2.address, TokenB.address, 100);
+      await FundDistribution.sendFundTo(addr2.address);
+      const afterEthBalance = await addr2.getBalance();
+      const afterTokenABalance = await TokenA.balanceOf(addr2.address);
+      const afterTokenBBalance = await TokenB.balanceOf(addr2.address);
+      expect(afterEthBalance).to.equal(beforeEthBalance.add(ethers.utils.parseEther('1')));
+      expect(afterTokenABalance).to.equal(beforeTokenABalance.add(50));
+      expect(afterTokenBBalance).to.equal(beforeTokenBBalance.add(60));
+      expect(await FundDistribution.ethAllowance(addr2.address)).to.equal(ethers.utils.parseEther('1'));
+      expect(await FundDistribution.tokenAllowance(addr2.address, TokenA.address)).to.equal(50);
+      expect(await FundDistribution.tokenAllowance(addr2.address, TokenB.address)).to.equal(40);
+    });
+    it('claim Ether', async () => {
+      const beforeEthBalance = await addr2.getBalance();
+      await FundDistribution.setEthAllowance(addr2.address, 50);
+      await FundDistribution.sendEthTo(addr2.address);
+      const afterEthBalance = await addr2.getBalance();
+      expect(afterEthBalance).to.equal(beforeEthBalance.add(50));
+    });
+    it('claim Ether revert with zero allowance', async () => {
+      await expect(FundDistribution.sendEthTo(addr2.address)).to.be.revertedWith('Allowance is zero');
+    });
+    it('claim Ether revert with zero balance', async () => {
+      await FundDistribution.setEthAllowance(addr2.address, ethers.utils.parseEther('1'));
+      await FundDistribution.setEthAllowance(addr3.address, ethers.utils.parseEther('1'));
+      await FundDistribution.sendEthTo(addr2.address);
+      await expect(FundDistribution.sendEthTo(addr3.address)).to.be.revertedWith('Balance is zero');
+    });
+    it('claim token', async () => {
+      await FundDistribution.setTokenAllowance(addr2.address, TokenA.address, 50);
+      await FundDistribution.setTokenAllowance(addr2.address, TokenB.address, 60);
+      await FundDistribution.sendTokenTo(addr2.address, TokenA.address);
+      expect(await TokenA.balanceOf(addr2.address)).to.equal(50);
+      await expect(FundDistribution.sendTokenTo(TokenB.address, addr2.address)).to.be.revertedWith(
+        'Allowance is zero'
+      );
     });
   });
   describe('test emit events', () => {
