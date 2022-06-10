@@ -19,7 +19,7 @@ const config: HardhatUserConfig = {
   solidity: {
     compilers: [
       {
-        version: '0.8.0',
+        version: '0.8.11',
         settings: {
           optimizer: {
             enabled: true,
@@ -34,7 +34,7 @@ const config: HardhatUserConfig = {
       chainId: 1313161554,
       forking: {
         // url: `https://testnet.aurora.dev/${process.env.AURORA_API_KEY}`,
-        url: `https://api.avax.network/ext/bc/C/rpc`,
+        url: `https://mainnet.aurora.dev/`,
         // blockNumber: 65217137
       },
       accounts: [
@@ -71,11 +71,11 @@ const config: HardhatUserConfig = {
       gas: 80000000,
       loggingEnabled: false,
     },
-    avax: {
-      url: `https://api.avax.network/ext/bc/C/rpc`,
-      accounts: [`${process.env.PRIVATE_KEYS}`],
-      gasPrice: 30 * 1000000000,
-      timeout: 200000,
+    aurora: {
+      chainId: 1313161554,
+      url: `https://mainnet.aurora.dev/${process.env.AURORA_API_KEY}`,
+      accounts: [`${process.env.PRIVATE_KEYS || dummyPrivateKey}`],
+      timeout: 500000,
     },
   },
   typechain: {
@@ -87,11 +87,6 @@ const config: HardhatUserConfig = {
   },
   mocha: {
     timeout: 500000,
-  },
-  etherscan: {
-    // Your API key for Etherscan
-    // Obtain one at https://etherscan.io/
-    apiKey: process.env.SNOWTRACE_KEY,
   },
 };
 
