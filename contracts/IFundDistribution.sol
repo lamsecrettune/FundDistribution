@@ -6,6 +6,9 @@ interface IFundDistribution {
   event TokenAllowanceIsSet(address to, address token, uint256 amount);
   event TokenIsAdded(address token);
   event FundIsClaimed(address to);
+  event EthIsClaimed(address to, uint256 amount);
+  event TokenIsClaimed(address to, address token, uint256 amount);
+  event AllTokensAreClaimed(address to);
 
   receive() external payable;
 

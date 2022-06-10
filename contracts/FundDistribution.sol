@@ -78,6 +78,7 @@ contract FundDistribution is IFundDistribution, BoringOwnable {
     uint256 amount = _min(address(this).balance, ethAllowance[msg.sender]);
     ethAllowance[msg.sender] -= amount;
     payable(msg.sender).transfer(amount);
+    emit EthIsClaimed(msg.sender, amount);
     return true;
   }
 
@@ -97,6 +98,7 @@ contract FundDistribution is IFundDistribution, BoringOwnable {
     uint256 amount = _min(address(this).balance, ethAllowance[to]);
     ethAllowance[to] -= amount;
     payable(to).transfer(amount);
+    emit EthIsClaimed(to, amount);
     return true;
   }
 
@@ -121,6 +123,7 @@ contract FundDistribution is IFundDistribution, BoringOwnable {
       uint256 amount = _min(address(this).balance, ethAllowance[msg.sender]);
       ethAllowance[msg.sender] -= amount;
       payable(msg.sender).transfer(amount);
+      emit EthIsClaimed(msg.sender, amount);
     }
     _transferAllTokens(msg.sender);
     emit FundIsClaimed(msg.sender);
@@ -132,6 +135,7 @@ contract FundDistribution is IFundDistribution, BoringOwnable {
       uint256 amount = _min(address(this).balance, ethAllowance[to]);
       ethAllowance[to] -= amount;
       payable(to).transfer(amount);
+      emit EthIsClaimed(to, amount);
     }
     _transferAllTokens(to);
     emit FundIsClaimed(to);
@@ -142,6 +146,7 @@ contract FundDistribution is IFundDistribution, BoringOwnable {
     for (uint256 i = 0; i < tokens.length; ++i) {
       if (tokenAllowance[to][tokens[i]] > 0) _transferToken(to, tokens[i]);
     }
+    emit AllTokensAreClaimed(to);
     return true;
   }
 
@@ -150,7 +155,9 @@ contract FundDistribution is IFundDistribution, BoringOwnable {
     uint256 amount = _min(tokenAllowance[to][token], tokenContract.balanceOf(address(this)));
     if (amount == 0) return false;
     tokenAllowance[to][token] -= amount;
-    return tokenContract.transfer(to, amount);
+    tokenContract.transfer(to, amount);
+    emit TokenIsClaimed(to, token, amount);
+    return true;
   }
 
   function _min(uint256 a, uint256 b) internal pure returns (uint256) {
