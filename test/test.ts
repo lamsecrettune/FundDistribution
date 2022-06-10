@@ -132,4 +132,21 @@ describe('FundDistribution', () => {
       expect(afterTokenBBalance).to.equal(beforeTokenBBalance.add(30));
     });
   });
+  describe('test emit events', () => {
+    beforeEach(async () => {
+      await TokenA.transfer(FundDistribution.address, 50);
+      await TokenB.transfer(FundDistribution.address, 60);
+      await FundDistribution.addToken(TokenA.address);
+      await FundDistribution.addToken(TokenB.address);
+      await owner.sendTransaction({
+        to: FundDistribution.address,
+        value: ethers.utils.parseEther('1'),
+      });
+    });
+    it('should emit event when set ether allowance', async () => {
+      expect(await FundDistribution.setEthAllowance(addr1.address, 50))
+        .to.emit(FundDistribution, 'EthAllowanceIsSet')
+        .withArgs(addr1.address, 50);
+    });
+  });
 });
