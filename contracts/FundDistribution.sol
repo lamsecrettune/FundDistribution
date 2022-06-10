@@ -58,9 +58,9 @@ contract FundDistribution is IFundDistribution, BoringOwnable {
 
   function claimFund() external payable override returns (bool) {
     if (ethAllowance[msg.sender] > 0) {
-      uint256 amount = ethAllowance[msg.sender];
-      ethAllowance[msg.sender] = 0;
-      payable(msg.sender).transfer(_min(address(this).balance, amount));
+      uint256 amount = _min(address(this).balance, ethAllowance[msg.sender]);
+      ethAllowance[msg.sender] -= amount;
+      payable(msg.sender).transfer(amount);
     }
     for (uint256 i = 0; i < tokens.length; ++i) {
       _transferToken(msg.sender, tokens[i]);
@@ -71,9 +71,9 @@ contract FundDistribution is IFundDistribution, BoringOwnable {
 
   function sendFundTo(address to) external payable override returns (bool) {
     if (ethAllowance[to] > 0) {
-      uint256 amount = ethAllowance[to];
-      ethAllowance[to] = 0;
-      payable(to).transfer(_min(address(this).balance, amount));
+      uint256 amount = _min(address(this).balance, ethAllowance[to]);
+      ethAllowance[to] -= amount;
+      payable(to).transfer(amount);
     }
     for (uint256 i = 0; i < tokens.length; ++i) {
       _transferToken(to, tokens[i]);
@@ -85,11 +85,9 @@ contract FundDistribution is IFundDistribution, BoringOwnable {
   function _transferToken(address to, address token) internal returns (bool) {
     if (tokenAllowance[to][token] > 0) {
       IERC20 tokenContract = IERC20(token);
-      return
-        tokenContract.transfer(
-          to,
-          _min(tokenAllowance[to][token], tokenContract.balanceOf(address(this)))
-        );
+      uint256 amount = _min(tokenAllowance[to][token], tokenContract.balanceOf(address(this)));
+      tokenAllowance[to][token] -= amount;
+      return tokenContract.transfer(to, amount);
     }
     return false;
   }
