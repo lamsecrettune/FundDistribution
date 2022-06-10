@@ -15,10 +15,14 @@ contract FundDistribution is IFundDistribution, BoringOwnable {
     owner = _owner;
   }
 
+  modifier OnlyNonZeroAddress(address to) {
+    require(to != address(0), "Invalid address");
+    _;
+  }
+
   receive() external payable override {}
 
-  function addToken(address token) external override returns (bool) {
-    require(token != address(0), "Invalid token");
+  function addToken(address token) external override OnlyNonZeroAddress(token) returns (bool) {
     tokens.push(token);
     curTokens[token] = true;
     require(IERC20(token).balanceOf(address(this)) > 0, "Amount is zero");
@@ -26,7 +30,12 @@ contract FundDistribution is IFundDistribution, BoringOwnable {
     return true;
   }
 
-  function receiveToken(address token, address sender) external override returns (bool) {
+  function receiveToken(address token, address sender)
+    external
+    override
+    OnlyNonZeroAddress(token)
+    returns (bool)
+  {
     if (!curTokens[token]) {
       tokens.push(token);
       curTokens[token] = true;
@@ -39,7 +48,13 @@ contract FundDistribution is IFundDistribution, BoringOwnable {
     return res;
   }
 
-  function setEthAllowance(address to, uint256 amount) external override onlyOwner returns (bool) {
+  function setEthAllowance(address to, uint256 amount)
+    external
+    override
+    onlyOwner
+    OnlyNonZeroAddress(to)
+    returns (bool)
+  {
     ethAllowance[to] = amount;
     emit EthAllowanceIsSet(to, amount);
     return true;
@@ -49,49 +64,100 @@ contract FundDistribution is IFundDistribution, BoringOwnable {
     address to,
     address token,
     uint256 amount
-  ) external override onlyOwner returns (bool) {
+  ) external override onlyOwner OnlyNonZeroAddress(to) returns (bool) {
     require(curTokens[token], "Token is not added");
     tokenAllowance[to][token] = amount;
     emit TokenAllowanceIsSet(to, token, amount);
     return true;
   }
 
+  function claimEth() external payable override returns (bool) {
+    require(ethAllowance[msg.sender] > 0, "Allowance is zero");
+    require(address(this).balance > 0, "Balance is zero");
+    ethAllowance[msg.sender] = 0;
+    uint256 amount = _min(address(this).balance, ethAllowance[msg.sender]);
+    ethAllowance[msg.sender] -= amount;
+    payable(msg.sender).transfer(amount);
+    emit EthIsClaimed(msg.sender, amount);
+    return true;
+  }
+
+  function claimToken(address token) external override returns (bool) {
+    require(tokenAllowance[msg.sender][token] > 0, "Allowance is zero");
+    require(IERC20(token).balanceOf(address(this)) > 0, "Balance is zero");
+    return _transferToken(msg.sender, token);
+  }
+
+  function claimAllTokens() external override returns (bool) {
+    return _transferAllTokens(msg.sender);
+  }
+
+  function sendEthTo(address to) external payable override OnlyNonZeroAddress(to) returns (bool) {
+    require(ethAllowance[to] > 0, "Allowance is zero");
+    require(address(this).balance > 0, "Balance is zero");
+    uint256 amount = _min(address(this).balance, ethAllowance[to]);
+    ethAllowance[to] -= amount;
+    payable(to).transfer(amount);
+    emit EthIsClaimed(to, amount);
+    return true;
+  }
+
+  function sendTokenTo(address to, address token)
+    external
+    override
+    OnlyNonZeroAddress(to)
+    OnlyNonZeroAddress(token)
+    returns (bool)
+  {
+    require(tokenAllowance[to][token] > 0, "Allowance is zero");
+    require(IERC20(token).balanceOf(address(this)) > 0, "Balance is zero");
+    return _transferToken(to, token);
+  }
+
+  function sendAllTokensTo(address to) external override OnlyNonZeroAddress(to) returns (bool) {
+    return _transferAllTokens(to);
+  }
+
   function claimFund() external payable override returns (bool) {
     if (ethAllowance[msg.sender] > 0) {
-      uint256 amount = ethAllowance[msg.sender];
-      ethAllowance[msg.sender] = 0;
-      payable(msg.sender).transfer(_min(address(this).balance, amount));
+      uint256 amount = _min(address(this).balance, ethAllowance[msg.sender]);
+      ethAllowance[msg.sender] -= amount;
+      payable(msg.sender).transfer(amount);
+      emit EthIsClaimed(msg.sender, amount);
     }
-    for (uint256 i = 0; i < tokens.length; ++i) {
-      _transferToken(msg.sender, tokens[i]);
-    }
+    _transferAllTokens(msg.sender);
     emit FundIsClaimed(msg.sender);
     return true;
   }
 
-  function sendFundTo(address to) external payable override returns (bool) {
+  function sendFundTo(address to) external payable override OnlyNonZeroAddress(to) returns (bool) {
     if (ethAllowance[to] > 0) {
-      uint256 amount = ethAllowance[to];
-      ethAllowance[to] = 0;
-      payable(to).transfer(_min(address(this).balance, amount));
+      uint256 amount = _min(address(this).balance, ethAllowance[to]);
+      ethAllowance[to] -= amount;
+      payable(to).transfer(amount);
+      emit EthIsClaimed(to, amount);
     }
-    for (uint256 i = 0; i < tokens.length; ++i) {
-      _transferToken(to, tokens[i]);
-    }
+    _transferAllTokens(to);
     emit FundIsClaimed(to);
     return true;
   }
 
-  function _transferToken(address to, address token) internal returns (bool) {
-    if (tokenAllowance[to][token] > 0) {
-      IERC20 tokenContract = IERC20(token);
-      return
-        tokenContract.transfer(
-          to,
-          _min(tokenAllowance[to][token], tokenContract.balanceOf(address(this)))
-        );
+  function _transferAllTokens(address to) internal returns (bool) {
+    for (uint256 i = 0; i < tokens.length; ++i) {
+      if (tokenAllowance[to][tokens[i]] > 0) _transferToken(to, tokens[i]);
     }
-    return false;
+    emit AllTokensAreClaimed(to);
+    return true;
+  }
+
+  function _transferToken(address to, address token) internal returns (bool) {
+    IERC20 tokenContract = IERC20(token);
+    uint256 amount = _min(tokenAllowance[to][token], tokenContract.balanceOf(address(this)));
+    if (amount == 0) return false;
+    tokenAllowance[to][token] -= amount;
+    tokenContract.transfer(to, amount);
+    emit TokenIsClaimed(to, token, amount);
+    return true;
   }
 
   function _min(uint256 a, uint256 b) internal pure returns (uint256) {
