@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "./IERC20.sol";
-import "./IFundDistribution.sol";
+import "./interfaces/IERC20.sol";
+import "./interfaces/IFundDistribution.sol";
 import "./BoringOwnable.sol";
 
 contract FundDistribution is IFundDistribution, BoringOwnable {

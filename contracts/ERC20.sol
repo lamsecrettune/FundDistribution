@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "./IERC20Metadata.sol";
+import "./interfaces/IERC20Metadata.sol";
 
 contract ERC20 is IERC20 {
   uint256 public constant MAXINT = 2**256 - 1;
@@ -12,7 +12,12 @@ contract ERC20 is IERC20 {
   uint8 private _coinDecimals;
   mapping(address => mapping(address => uint256)) private _allowances;
 
-  constructor(uint256 _initialSupply, string memory _name, string memory _symbol, uint8 _decimals) public {
+  constructor(
+    uint256 _initialSupply,
+    string memory _name,
+    string memory _symbol,
+    uint8 _decimals
+  ) public {
     _coinName = _name;
     _coinSymbol = _symbol;
     _coinDecimals = _decimals;
@@ -22,9 +27,11 @@ contract ERC20 is IERC20 {
   function name() external view returns (string memory) {
     return _coinName;
   }
+
   function symbol() external view returns (string memory) {
     return _coinSymbol;
   }
+
   function decimals() external view returns (uint8) {
     return _coinDecimals;
   }
@@ -97,6 +104,7 @@ contract ERC20 is IERC20 {
     emit Transfer(address(0), to, amount);
     return true;
   }
+
   //should be internal function
   //currently public for testing purposes
   function burn(uint256 amount) public returns (bool) {
