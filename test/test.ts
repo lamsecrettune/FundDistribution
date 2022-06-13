@@ -130,6 +130,23 @@ describe('FundDistribution', () => {
       expect(afterTokenABalance).to.equal(beforeTokenABalance.add(20));
       expect(afterTokenBBalance).to.equal(beforeTokenBBalance.add(30));
     });
+    it('should claim fund to self', async () => {
+      const beforeEthBalance = await addr2.getBalance();
+      const beforeTokenABalance = await TokenA.balanceOf(addr2.address);
+      const beforeTokenBBalance = await TokenB.balanceOf(addr2.address);
+      await FundDistribution.setEthAllowance(addr2.address, 50);
+      await FundDistribution.setTokenAllowance(addr2.address, TokenA.address, 20);
+      await FundDistribution.setTokenAllowance(addr2.address, TokenB.address, 30);
+      const tx = await FundDistribution.connect(addr2).claimFund();
+      const receipt = await tx.wait();
+      const gasSpent = receipt.gasUsed.mul(receipt.effectiveGasPrice);
+      const afterEthBalance = await addr2.getBalance();
+      const afterTokenABalance = await TokenA.balanceOf(addr2.address);
+      const afterTokenBBalance = await TokenB.balanceOf(addr2.address);
+      expect(afterEthBalance).to.equal(beforeEthBalance.add(50).sub(gasSpent));
+      expect(afterTokenABalance).to.equal(beforeTokenABalance.add(20));
+      expect(afterTokenBBalance).to.equal(beforeTokenBBalance.add(30));
+    });
     it('claim fund with allowance exceed balance', async () => {
       const beforeEthBalance = await addr2.getBalance();
       const beforeTokenABalance = await TokenA.balanceOf(addr2.address);
@@ -148,12 +165,33 @@ describe('FundDistribution', () => {
       expect(await FundDistribution.tokenAllowance(addr2.address, TokenA.address)).to.equal(50);
       expect(await FundDistribution.tokenAllowance(addr2.address, TokenB.address)).to.equal(40);
     });
-    it('claim Ether', async () => {
+    it('claim fund to self with allowance exceed balance', async () => {
       const beforeEthBalance = await addr2.getBalance();
-      await FundDistribution.setEthAllowance(addr2.address, 50);
-      await FundDistribution.sendEthTo(addr2.address);
+      const beforeTokenABalance = await TokenA.balanceOf(addr2.address);
+      const beforeTokenBBalance = await TokenB.balanceOf(addr2.address);
+      await FundDistribution.setEthAllowance(addr2.address, ethers.utils.parseEther('2'));
+      await FundDistribution.setTokenAllowance(addr2.address, TokenA.address, 100);
+      await FundDistribution.setTokenAllowance(addr2.address, TokenB.address, 100);
+      const tx = await FundDistribution.connect(addr2).claimFund();
+      const receipt = await tx.wait();
+      const gasSpent = receipt.gasUsed.mul(receipt.effectiveGasPrice);
       const afterEthBalance = await addr2.getBalance();
-      expect(afterEthBalance).to.equal(beforeEthBalance.add(50));
+      const afterTokenABalance = await TokenA.balanceOf(addr2.address);
+      const afterTokenBBalance = await TokenB.balanceOf(addr2.address);
+      expect(afterEthBalance).to.equal(beforeEthBalance.add(ethers.utils.parseEther('1')).sub(gasSpent));
+      expect(afterTokenABalance).to.equal(beforeTokenABalance.add(50));
+      expect(afterTokenBBalance).to.equal(beforeTokenBBalance.add(60));
+      expect(await FundDistribution.ethAllowance(addr2.address)).to.equal(ethers.utils.parseEther('1'));
+      expect(await FundDistribution.tokenAllowance(addr2.address, TokenA.address)).to.equal(50);
+      expect(await FundDistribution.tokenAllowance(addr2.address, TokenB.address)).to.equal(40);
+    });
+    it('claim Ether', async () => {
+      await FundDistribution.setEthAllowance(addr2.address, 50);
+      expect(await FundDistribution.sendEthTo(addr2.address)).to.changeEtherBalance(addr2, 50);
+    });
+    it('claim Ether to self', async () => {
+      await FundDistribution.setEthAllowance(addr2.address, 50);
+      expect(await FundDistribution.sendEthTo(addr2.address)).to.changeEtherBalance(addr2, 50);
     });
     it('claim Ether revert with zero allowance', async () => {
       await expect(FundDistribution.sendEthTo(addr2.address)).to.be.revertedWith('Allowance is zero');
