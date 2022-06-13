@@ -191,7 +191,7 @@ describe('FundDistribution', () => {
     });
     it('claim Ether to self', async () => {
       await FundDistribution.setEthAllowance(addr2.address, 50);
-      expect(await FundDistribution.sendEthTo(addr2.address)).to.changeEtherBalance(addr2, 50);
+      expect(await FundDistribution.connect(addr2).claimEth()).to.changeEtherBalance(addr2, 50);
     });
     it('claim Ether revert with zero allowance', async () => {
       await expect(FundDistribution.sendEthTo(addr2.address)).to.be.revertedWith('Allowance is zero');
