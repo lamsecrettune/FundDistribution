@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "./interfaces/IERC20Metadata.sol";
+import "../interfaces/IERC20Metadata.sol";
 
 contract ERC20 is IERC20 {
   uint256 public constant MAXINT = 2**256 - 1;

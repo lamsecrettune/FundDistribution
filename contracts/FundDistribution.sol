@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 
 import "./interfaces/IERC20.sol";
 import "./interfaces/IFundDistribution.sol";
-import "./BoringOwnable.sol";
+import "./helpers/BoringOwnable.sol";
 
 contract FundDistribution is IFundDistribution, BoringOwnable {
   mapping(address => uint256) public ethAllowance;
